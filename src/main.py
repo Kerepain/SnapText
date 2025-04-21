@@ -8,7 +8,7 @@ from PyQt6.QtCore import Qt, QPoint
 from PyQt6.QtGui import QIcon, QFont, QPalette, QColor, QPixmap
 from screenshot import ScreenshotWidget
 from text_processor import TextProcessor
-from image_text_renderer import ImageTextRenderer
+from image_text_processor import ImageTextProcessor
 from position_selector import PositionSelector
 from styles import Style
 
@@ -91,7 +91,7 @@ class CSVFormatDialog(QDialog):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SnapText - 图片文字批处理工具")
+        self.setWindowTitle("SnapText - 批量截图文字处理工具")
         self.setGeometry(100, 100, 900, 700)
         
         # 检测系统主题
@@ -99,7 +99,7 @@ class MainWindow(QMainWindow):
         
         # 初始化模块
         self.text_processor = TextProcessor()
-        self.image_renderer = ImageTextRenderer()
+        self.image_processor = ImageTextProcessor()
         
         # 创建主窗口部件
         main_widget = QWidget()
@@ -116,12 +116,12 @@ class MainWindow(QMainWindow):
         
         # 添加logo
         logo_label = QLabel()
-        logo_pixmap = QPixmap("assets/logo.png")
+        logo_pixmap = QPixmap("assets/logo.svg")
         if not logo_pixmap.isNull():
             logo_label.setPixmap(logo_pixmap.scaled(32, 32, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
         header_layout.addWidget(logo_label)
         
-        title = QLabel("SnapText - 图片文字批处理工具")
+        title = QLabel("SnapText - 批量截图文字处理工具")
         title.setObjectName("title")  # 设置对象名称以便样式表识别
         title.setStyleSheet(Style.get_title_style(self.isDarkMode))
         title.setAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -251,9 +251,9 @@ class MainWindow(QMainWindow):
         # 连接模块信号
         self.text_processor.data_loaded.connect(self.on_data_loaded)
         self.text_processor.error_occurred.connect(self.show_error)
-        self.image_renderer.progress_updated.connect(self.update_progress)
-        self.image_renderer.generation_completed.connect(self.on_generation_completed)
-        self.image_renderer.error_occurred.connect(self.show_error)
+        self.image_processor.progress_updated.connect(self.update_progress)
+        self.image_processor.generation_completed.connect(self.on_generation_completed)
+        self.image_processor.error_occurred.connect(self.show_error)
         
         # 初始化变量
         self.screenshot_path = None
@@ -384,10 +384,10 @@ class MainWindow(QMainWindow):
         
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
-        self.status_label.setText("正在生成图片...")
+        self.status_label.setText("正在生成截图...")
         
         # 生成截图
-        self.image_renderer.generate_screenshots(
+        self.image_processor.generate_screenshots(
             self.screenshot_path,
             self.data[:self.data_count_spin.value()],
             self.text_positions
