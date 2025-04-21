@@ -1,0 +1,1 @@
+([('SnapText', '/Users/kltions/Kltion/SnapText/dist/SnapText', 'EXECUTABLE')],)
