@@ -2,81 +2,239 @@ import sys
 import os
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                            QPushButton, QLabel, QProgressBar, QMessageBox,
-                           QHBoxLayout, QSpinBox, QFileDialog)
+                           QHBoxLayout, QSpinBox, QFileDialog, QFrame, QCheckBox,
+                           QToolButton, QToolTip, QDialog, QTextEdit)
 from PyQt6.QtCore import Qt, QPoint
+from PyQt6.QtGui import QIcon, QFont, QPalette, QColor, QPixmap
 from screenshot import ScreenshotWidget
 from text_processor import TextProcessor
-from document_generator import DocumentGenerator
+from image_text_renderer import ImageTextRenderer
 from position_selector import PositionSelector
+from styles import Style
+
+class CardFrame(QFrame):
+    def __init__(self, title="", parent=None):
+        super().__init__(parent)
+        self.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
+        self.updateStyle()
+        self.layout = QVBoxLayout(self)
+        if title:
+            title_label = QLabel(title)
+            title_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            self.layout.addWidget(title_label)
+    
+    def updateStyle(self):
+        isDark = self.window().isDarkMode if hasattr(self.window(), 'isDarkMode') else False
+        self.setStyleSheet(Style.get_card_style(isDark))
+
+class CSVFormatDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("CSV格式说明")
+        self.setMinimumWidth(500)
+        
+        # 获取当前主题模式
+        isDark = self.window().isDarkMode if hasattr(self.window(), 'isDarkMode') else False
+        
+        layout = QVBoxLayout()
+        
+        # 添加说明文本
+        text = QTextEdit()
+        text.setReadOnly(True)
+        # 根据主题设置文本颜色
+        text.setStyleSheet(f"""
+            QTextEdit {{
+                background-color: {'#2d2d2d' if isDark else '#ffffff'};
+                color: {'#ffffff' if isDark else '#000000'};
+                border: 1px solid {'#404040' if isDark else '#ddd'};
+                border-radius: 4px;
+                padding: 10px;
+            }}
+        """)
+        text.setHtml("""
+            <h3>CSV文件格式说明</h3>
+            <p>请按照以下格式准备CSV文件：</p>
+            <ol>
+                <li>使用UTF-8编码保存文件</li>
+                <li>每行代表一组数据</li>
+                <li>数据之间用逗号分隔</li>
+                <li>数据顺序要与文字位置一一对应</li>
+            </ol>
+            <p><b>示例：</b></p>
+            <pre>张三,25,男
+李四,30,女
+王五,28,男</pre>
+            <p><b>说明：</b></p>
+            <ul>
+                <li>第一列对应第一个文字位置</li>
+                <li>第二列对应第二个文字位置</li>
+                <li>第三列对应第三个文字位置</li>
+                <li>以此类推...</li>
+            </ul>
+            <p><b>注意事项：</b></p>
+            <ul>
+                <li>确保CSV文件中的数据列数与设置的文字位置数量相同</li>
+                <li>如果数据中包含逗号，请用双引号将整个字段括起来</li>
+                <li>建议使用Excel或Numbers等软件编辑后导出为CSV格式</li>
+            </ul>
+        """)
+        layout.addWidget(text)
+        
+        # 添加确定按钮
+        ok_button = QPushButton("我知道了")
+        ok_button.setStyleSheet(Style.get_primary_button_style(isDark))
+        ok_button.clicked.connect(self.accept)
+        layout.addWidget(ok_button)
+        
+        self.setLayout(layout)
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SnapText - 批量截图文字处理工具")
-        self.setGeometry(100, 100, 800, 600)
+        self.setWindowTitle("SnapText - 图片文字批处理工具")
+        self.setGeometry(100, 100, 900, 700)
+        
+        # 检测系统主题
+        self.isDarkMode = self.isSystemDarkMode()
         
         # 初始化模块
         self.text_processor = TextProcessor()
-        self.document_generator = DocumentGenerator()
+        self.image_renderer = ImageTextRenderer()
         
         # 创建主窗口部件
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
         
-        # 创建布局
+        # 创建主布局
         layout = QVBoxLayout()
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
         main_widget.setLayout(layout)
         
-        # 添加标题
-        title = QLabel("SnapText - 批量截图文字处理工具")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(title)
+        # 添加标题和主题切换
+        header_layout = QHBoxLayout()
         
-        # 创建截图和导入按钮的水平布局
+        # 添加logo
+        logo_label = QLabel()
+        logo_pixmap = QPixmap("assets/logo.png")
+        if not logo_pixmap.isNull():
+            logo_label.setPixmap(logo_pixmap.scaled(32, 32, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+        header_layout.addWidget(logo_label)
+        
+        title = QLabel("SnapText - 图片文字批处理工具")
+        title.setObjectName("title")  # 设置对象名称以便样式表识别
+        title.setStyleSheet(Style.get_title_style(self.isDarkMode))
+        title.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        header_layout.addWidget(title)
+        
+        # 添加主题切换复选框
+        self.theme_checkbox = QCheckBox("暗色模式")
+        self.theme_checkbox.setChecked(self.isDarkMode)
+        self.theme_checkbox.stateChanged.connect(self.toggleTheme)
+        header_layout.addWidget(self.theme_checkbox, alignment=Qt.AlignmentFlag.AlignRight)
+        
+        layout.addLayout(header_layout)
+        
+        # 图片选择卡片
+        image_card = CardFrame("图片选择")
         screenshot_layout = QHBoxLayout()
+        screenshot_layout.setSpacing(10)
         
-        # 添加截图按钮
         self.screenshot_btn = QPushButton("选择截图区域")
+        self.screenshot_btn.setIcon(QIcon.fromTheme("camera"))
         screenshot_layout.addWidget(self.screenshot_btn)
         
-        # 添加导入图片按钮
         self.import_image_btn = QPushButton("导入已有图片")
+        self.import_image_btn.setIcon(QIcon.fromTheme("folder-open"))
         screenshot_layout.addWidget(self.import_image_btn)
         
-        layout.addLayout(screenshot_layout)
+        image_card.layout.addLayout(screenshot_layout)
+        layout.addWidget(image_card)
         
-        # 添加位置数量选择
-        position_count_layout = QHBoxLayout()
-        position_count_layout.addWidget(QLabel("文字位置数量:"))
-        self.position_count_spin = QSpinBox()
-        self.position_count_spin.setRange(1, 10)  # 最多支持10个位置
-        self.position_count_spin.setValue(3)  # 默认3个位置
-        position_count_layout.addWidget(self.position_count_spin)
-        layout.addLayout(position_count_layout)
+        # 数据设置卡片
+        data_card = CardFrame("数据设置")
+        data_layout = QVBoxLayout()
         
-        # 添加文字位置选择按钮
-        self.select_positions_btn = QPushButton("选择所有文字位置")
-        layout.addWidget(self.select_positions_btn)
-        
-        # 添加数据组数选择
+        # 数据组数选择
         data_count_layout = QHBoxLayout()
         data_count_layout.addWidget(QLabel("数据组数:"))
         self.data_count_spin = QSpinBox()
         self.data_count_spin.setRange(1, 40)
         self.data_count_spin.setValue(1)
         data_count_layout.addWidget(self.data_count_spin)
-        layout.addLayout(data_count_layout)
         
-        # 添加导入和生成按钮
+        # 添加帮助按钮
+        help_btn = QPushButton("?")
+        help_btn.setFixedSize(20, 20)
+        help_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #4a90e2;
+                color: white;
+                border-radius: 10px;
+                font-size: 12px;
+                font-weight: bold;
+                padding: 0px;
+                margin: 0px;
+                min-width: 20px;
+                max-width: 20px;
+                min-height: 20px;
+                max-height: 20px;
+            }
+            QPushButton:hover {
+                background-color: #357abd;
+            }
+        """)
+        help_btn.setToolTip("点击查看CSV格式说明")
+        help_btn.clicked.connect(self.show_csv_format_help)
+        data_count_layout.addWidget(help_btn)
+        
+        data_count_layout.addStretch()
+        data_layout.addLayout(data_count_layout)
+        
+        # 导入数据按钮
         self.import_btn = QPushButton("导入文本数据")
-        self.generate_btn = QPushButton("生成带文字截图")
-        layout.addWidget(self.import_btn)
-        layout.addWidget(self.generate_btn)
+        self.import_btn.setIcon(QIcon.fromTheme("document-open"))
+        data_layout.addWidget(self.import_btn)
         
-        # 添加进度条
+        data_card.layout.addLayout(data_layout)
+        layout.addWidget(data_card)
+        
+        # 文字位置设置卡片
+        position_card = CardFrame("文字位置设置")
+        position_layout = QVBoxLayout()
+        
+        # 位置数量选择
+        position_count_layout = QHBoxLayout()
+        position_count_layout.addWidget(QLabel("文字位置数量:"))
+        self.position_count_spin = QSpinBox()
+        self.position_count_spin.setRange(1, 10)
+        self.position_count_spin.setValue(3)
+        position_count_layout.addWidget(self.position_count_spin)
+        position_count_layout.addStretch()
+        position_layout.addLayout(position_count_layout)
+        
+        # 选择位置按钮
+        self.select_positions_btn = QPushButton("选择所有文字位置")
+        self.select_positions_btn.setIcon(QIcon.fromTheme("edit"))
+        position_layout.addWidget(self.select_positions_btn)
+        
+        position_card.layout.addLayout(position_layout)
+        layout.addWidget(position_card)
+        
+        # 生成按钮和进度条卡片
+        generate_card = CardFrame()
+        generate_layout = QVBoxLayout()
+        
+        self.generate_btn = QPushButton("生成带文字截图")
+        self.generate_btn.setIcon(QIcon.fromTheme("document-save"))
+        generate_layout.addWidget(self.generate_btn)
+        
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
-        layout.addWidget(self.progress_bar)
+        generate_layout.addWidget(self.progress_bar)
+        
+        generate_card.layout.addLayout(generate_layout)
+        layout.addWidget(generate_card)
         
         # 添加状态标签
         self.status_label = QLabel("就绪")
@@ -93,15 +251,51 @@ class MainWindow(QMainWindow):
         # 连接模块信号
         self.text_processor.data_loaded.connect(self.on_data_loaded)
         self.text_processor.error_occurred.connect(self.show_error)
-        self.document_generator.progress_updated.connect(self.update_progress)
-        self.document_generator.generation_completed.connect(self.on_generation_completed)
-        self.document_generator.error_occurred.connect(self.show_error)
+        self.image_renderer.progress_updated.connect(self.update_progress)
+        self.image_renderer.generation_completed.connect(self.on_generation_completed)
+        self.image_renderer.error_occurred.connect(self.show_error)
         
         # 初始化变量
         self.screenshot_path = None
         self.data = None
         self.text_positions = []  # 存储所有文字位置信息
+        
+        # 更新全局样式
+        self.updateStyle()
     
+    def isSystemDarkMode(self):
+        """检测系统是否为暗色模式"""
+        if sys.platform == "darwin":  # macOS
+            from subprocess import run, PIPE
+            result = run(['defaults', 'read', '-g', 'AppleInterfaceStyle'], 
+                        stdout=PIPE, stderr=PIPE)
+            return result.returncode == 0
+        return False
+    
+    def toggleTheme(self, state):
+        """切换主题"""
+        self.isDarkMode = bool(state)
+        self.updateStyle()
+    
+    def updateStyle(self):
+        """更新全局样式"""
+        # 设置窗口背景色
+        self.setStyleSheet(Style.get_main_style(self.isDarkMode))
+        
+        # 更新所有卡片的样式
+        for widget in self.findChildren(CardFrame):
+            widget.updateStyle()
+        
+        # 更新标题样式
+        title = self.findChild(QLabel, "title")
+        if title:
+            title.setStyleSheet(Style.get_title_style(self.isDarkMode))
+        
+        # 更新特殊按钮样式
+        self.screenshot_btn.setStyleSheet(Style.get_primary_button_style(self.isDarkMode))
+        self.select_positions_btn.setStyleSheet(Style.get_primary_button_style(self.isDarkMode))
+        self.generate_btn.setStyleSheet(Style.get_success_button_style(self.isDarkMode))
+
     def select_screenshot_area(self):
         """选择截图区域"""
         self.status_label.setText("请选择截图区域...")
@@ -190,10 +384,10 @@ class MainWindow(QMainWindow):
         
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
-        self.status_label.setText("正在生成截图...")
+        self.status_label.setText("正在生成图片...")
         
         # 生成截图
-        self.document_generator.generate_screenshots(
+        self.image_renderer.generate_screenshots(
             self.screenshot_path,
             self.data[:self.data_count_spin.value()],
             self.text_positions
@@ -235,6 +429,11 @@ class MainWindow(QMainWindow):
                 self.status_label.setText("图片已导入")
             except Exception as e:
                 QMessageBox.critical(self, "错误", f"导入图片失败: {str(e)}")
+
+    def show_csv_format_help(self):
+        """显示CSV格式说明对话框"""
+        dialog = CSVFormatDialog(self)
+        dialog.exec()
 
 def main():
     app = QApplication(sys.argv)
