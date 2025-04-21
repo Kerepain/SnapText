@@ -32,4 +32,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: SnapText
-        path: dist/SnapText.exe 
+        path: dist/SnapText.exe
