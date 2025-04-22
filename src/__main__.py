@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-SnapText - 批量图片文字处理工具
-主入口文件 - 为了向后兼容，保留该文件作为入口点
+SnapText 应用程序主入口点
+允许通过 python -m src 来启动应用
 """
 
 import sys
