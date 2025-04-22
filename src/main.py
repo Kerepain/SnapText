@@ -92,6 +92,10 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("SnapText - 批量图片文字处理工具")
+        self.setGeometry(100, 100, 900, 700)
+        
+        # 设置主题
+        self.isDarkMode = self.isSystemDarkMode()
         
         # 创建主窗口部件和布局
         central_widget = QWidget()
@@ -100,12 +104,36 @@ class MainWindow(QMainWindow):
         layout.setSpacing(20)
         layout.setContentsMargins(20, 20, 20, 20)
         
+        # 添加标题和主题切换
+        header_layout = QHBoxLayout()
+        
+        # 添加logo
+        logo_label = QLabel()
+        logo_path = self.get_resource_path("assets/logo.svg")
+        logo_pixmap = QPixmap(logo_path)
+        if not logo_pixmap.isNull():
+            logo_label.setPixmap(logo_pixmap.scaled(32, 32, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            # 设置应用图标
+            self.setWindowIcon(QIcon(logo_path))
+        header_layout.addWidget(logo_label)
+        
+        title = QLabel("SnapText - 批量图片文字处理工具")
+        title.setObjectName("title")  # 设置对象名称以便样式表识别
+        title.setStyleSheet(Style.get_title_style(self.isDarkMode))
+        title.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        header_layout.addWidget(title)
+        
+        # 添加主题切换复选框
+        self.theme_checkbox = QCheckBox("暗色模式")
+        self.theme_checkbox.setChecked(self.isDarkMode)
+        self.theme_checkbox.stateChanged.connect(self.toggleTheme)
+        header_layout.addWidget(self.theme_checkbox, alignment=Qt.AlignmentFlag.AlignRight)
+        
+        layout.addLayout(header_layout)
+        
         # 初始化处理器
         self.text_processor = TextProcessor()
         self.image_processor = ImageTextProcessor()
-        
-        # 设置主题
-        self.isDarkMode = self.isSystemDarkMode()
         
         # 图片设置卡片
         image_card = CardFrame("图片设置")
@@ -256,6 +284,11 @@ class MainWindow(QMainWindow):
         # 更新所有卡片的样式
         for widget in self.findChildren(CardFrame):
             widget.updateStyle()
+        
+        # 更新标题样式
+        title = self.findChild(QLabel, "title")
+        if title:
+            title.setStyleSheet(Style.get_title_style(self.isDarkMode))
         
         # 更新特殊按钮样式
         self.import_image_btn.setStyleSheet(Style.get_primary_button_style(self.isDarkMode))
@@ -424,6 +457,11 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "错误", f"导入数据失败: {str(e)}")
             self.status_label.setText("导入数据失败")
+
+    def toggleTheme(self, state):
+        """切换主题"""
+        self.isDarkMode = bool(state)
+        self.updateStyle()
 
 def main():
     app = QApplication(sys.argv)
