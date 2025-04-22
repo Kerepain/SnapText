@@ -1,0 +1,50 @@
+name: Build Windows Executable
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller pillow
+        
+    - name: Convert ico
+      run: |
+        python -c "from PIL import Image; img = Image.open('assets/logo.png'); img.save('assets/logo.ico')"
+      
+    - name: Build with PyInstaller
+      run: |
+        pyinstaller --clean ^
+          --name SnapText ^
+          --icon assets/logo.ico ^
+          --add-data "assets;assets" ^
+          --hidden-import PyQt6 ^
+          --hidden-import PIL ^
+          --hidden-import numpy ^
+          --hidden-import reportlab ^
+          --noconsole ^
+          --onefile ^
+          src/main.py
+          
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: SnapText-Windows
+        path: dist/SnapText.exe 
