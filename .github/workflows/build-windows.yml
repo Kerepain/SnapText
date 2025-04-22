@@ -23,12 +23,8 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install pyinstaller pillow
+        pip install pyinstaller
         
-    - name: Convert ico
-      run: |
-        python -c "from PIL import Image; img = Image.open('assets/logo.png'); img.save('assets/logo.ico')"
-      
     - name: Build with PyInstaller
       run: |
         pyinstaller main.spec
