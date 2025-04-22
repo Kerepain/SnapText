@@ -422,7 +422,8 @@ class MainWindow(QMainWindow):
             try:
                 # 复制图片到临时文件
                 import shutil
-                self.image_path = os.path.abspath("temp_image.png")
+                temp_dir = tempfile.gettempdir()
+                self.image_path = os.path.join(temp_dir, 'snaptext_image.png')
                 if os.path.exists(self.image_path):
                     os.remove(self.image_path)
                 shutil.copy2(file_path, self.image_path)
