@@ -343,38 +343,23 @@ class MainWindow(QMainWindow):
     
     def import_text(self):
         """导入文本数据"""
-        try:
-            # 创建临时文件
-            temp_dir = tempfile.gettempdir()
-            temp_image_path = os.path.join(temp_dir, 'snaptext_temp.png')
-            
-            # 创建空白图片
-            img = Image.new('RGB', (100, 100), color='white')
-            img.save(temp_image_path)
-            
-            # 使用系统默认程序打开图片
-            if sys.platform == 'darwin':  # macOS
-                subprocess.run(['open', temp_image_path])
-            elif sys.platform == 'win32':  # Windows
-                os.startfile(temp_image_path)
-            elif sys.platform == 'linux':  # Linux
-                subprocess.run(['xdg-open', temp_image_path])
-            
-            # 等待用户编辑完成
-            input("请编辑图片，完成后按回车键继续...")
-            
-            # 读取编辑后的图片
-            edited_img = Image.open(temp_image_path)
-            
-            # 删除临时文件
-            os.remove(temp_image_path)
-            
-            # 更新拖放标签显示
-            self.csv_drop_label.setText(f"已导入数据:\n{os.path.basename(temp_image_path)}")
-            self.status_label.setText("数据已导入")
-        except Exception as e:
-            QMessageBox.critical(self, "错误", f"导入数据失败: {str(e)}")
-            self.status_label.setText("导入数据失败")
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "选择文本数据文件",
+            "",
+            "CSV 文件 (*.csv);;文本文件 (*.txt);;所有文件 (*.*)"
+        )
+        
+        if file_path:
+            self.status_label.setText("正在导入数据...")
+            try:
+                self.text_processor.import_text(file_path=file_path)
+                self.csv_drop_label.setText(f"已导入数据:\n{os.path.basename(file_path)}")
+            except Exception as e:
+                QMessageBox.critical(self, "错误", f"导入数据失败: {str(e)}")
+                self.status_label.setText("导入数据失败")
+        else:
+            self.status_label.setText("未选择文件")
     
     def on_data_loaded(self, data):
         """数据加载完成回调"""
