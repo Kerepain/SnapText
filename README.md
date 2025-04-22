@@ -107,7 +107,7 @@ pyinstaller SnapText.spec
 
 ## 版权和许可
 
-Copyright (c) 2024 Kerepain
+Copyright (c) 2025 Kerepain
 
 本项目采用 MIT 许可证，详见 [LICENSE](LICENSE) 文件。
 
@@ -126,4 +126,4 @@ Copyright (c) 2024 Kerepain
 如有任何问题或建议，请通过以下方式联系：
 
 - 提交 Issue
-- 发送邮件至：your-email@example.com 
+- 发送邮件至：kltion@qq.com
