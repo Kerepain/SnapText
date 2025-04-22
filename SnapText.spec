@@ -3,11 +3,21 @@
 block_cipher = None
 
 a = Analysis(
-    ['src/main.py'],
+    ['src/app.py'],
     pathex=[],
     binaries=[],
-    datas=[],
-    hiddenimports=['PyQt6.QtCore', 'PyQt6.QtGui', 'PyQt6.QtWidgets'],
+    datas=[('assets', 'assets')],
+    hiddenimports=[
+        'PyQt6', 
+        'PIL', 
+        'numpy', 
+        'reportlab', 
+        'pyscreenshot',
+        'src.ui',
+        'src.processors',
+        'src.utils',
+        'src.config'
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -40,5 +50,22 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='assets/icon.ico'
+    icon=['assets/logo.ico'],
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='SnapText',
+)
+
+app = BUNDLE(
+    coll,
+    name='SnapText.app',
+    icon='assets/logo.ico',
+    bundle_identifier='com.kltions.snaptext',
 ) 

@@ -87,19 +87,23 @@ SnapText/
 
 #### 发布流程
 
-如需创建新的发布版本，请按照以下步骤操作：
+本项目使用GitHub Actions自动构建：
 
 1. 更新版本号：修改 `src/config/constants.py` 中的 `APP_VERSION`
-2. 构建应用程序：
-   - Windows: `pyinstaller main.spec`
-   - macOS: `pyinstaller SnapText.spec`
-3. 测试生成的可执行文件
-4. 创建标签和发布：
+2. 提交更改并推送到main分支
+3. 创建新版本标签：
    ```
    git tag -a v1.x.x -m "SnapText v1.x.x"
    git push origin v1.x.x
    ```
-5. 在GitHub发布页面上传生成的可执行文件
+4. GitHub Actions将自动构建Windows和macOS应用程序，并创建发布版本
+
+当推送标签时，GitHub Actions工作流程会：
+- 为Windows和macOS平台自动构建可执行文件
+- 自动创建发布版本并上传构建产物
+- 生成发布页面，无需手动上传文件
+
+你可以在[GitHub Actions](https://github.com/yourusername/SnapText/actions)页面查看构建进度和历史。
 
 ### 更新日志
 
