@@ -21,6 +21,9 @@ a = Analysis(
         'pynput.mouse._win32',
         'pyautogui',
         'python-docx',
+        'win32gui',
+        'win32con',
+        'win32api',
     ],
     hookspath=[],
     hooksconfig={},
@@ -66,4 +69,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon='assets/logo.ico',
+    version='file_version_info.txt',
 ) 
