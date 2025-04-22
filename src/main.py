@@ -433,6 +433,7 @@ class MainWindow(QMainWindow):
                 self.image_drop_label.setText(f"已导入图片:\n{os.path.basename(file_path)}")
             except Exception as e:
                 QMessageBox.critical(self, "错误", f"导入图片失败: {str(e)}")
+                self.status_label.setText("导入图片失败")
 
     def show_csv_format_help(self):
         """显示CSV格式说明对话框"""
@@ -454,7 +455,8 @@ class MainWindow(QMainWindow):
         try:
             # 复制图片到临时文件
             import shutil
-            self.image_path = os.path.abspath("temp_image.png")
+            temp_dir = tempfile.gettempdir()
+            self.image_path = os.path.join(temp_dir, 'snaptext_image.png')
             if os.path.exists(self.image_path):
                 os.remove(self.image_path)
             shutil.copy2(file_path, self.image_path)
@@ -464,15 +466,28 @@ class MainWindow(QMainWindow):
             self.image_drop_label.setText(f"已导入图片:\n{os.path.basename(file_path)}")
         except Exception as e:
             QMessageBox.critical(self, "错误", f"导入图片失败: {str(e)}")
+            self.status_label.setText("导入图片失败")
     
     def on_csv_dropped(self, file_path):
         """处理CSV拖放"""
         try:
-            self.text_processor.import_text(file_path=file_path)
+            # 复制CSV文件到临时文件
+            import shutil
+            temp_dir = tempfile.gettempdir()
+            temp_csv_path = os.path.join(temp_dir, 'snaptext_data.csv')
+            if os.path.exists(temp_csv_path):
+                os.remove(temp_csv_path)
+            shutil.copy2(file_path, temp_csv_path)
+            
+            # 导入数据
+            self.text_processor.import_text(file_path=temp_csv_path)
             self.status_label.setText("数据已导入")
             
             # 更新拖放标签显示
             self.csv_drop_label.setText(f"已导入数据:\n{os.path.basename(file_path)}")
+            
+            # 删除临时文件
+            os.remove(temp_csv_path)
         except Exception as e:
             QMessageBox.critical(self, "错误", f"导入数据失败: {str(e)}")
             self.status_label.setText("导入数据失败")
