@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (QWidget, QLabel, QVBoxLayout, QApplication, 
                            QDialog, QPushButton, QHBoxLayout, QFontDialog,
-                           QColorDialog, QSpinBox)
+                           QColorDialog, QSpinBox, QCheckBox)
 from PyQt6.QtCore import Qt, QPoint, pyqtSignal
 from PyQt6.QtGui import QPixmap, QPainter, QPen, QColor, QFont
 
@@ -59,10 +59,16 @@ class PositionSelector(QDialog):
         self.size_label = QLabel("字体大小:")
         control_layout.addWidget(self.size_label)
         self.size_spin = QSpinBox()
-        self.size_spin.setRange(8, 72)
-        self.size_spin.setValue(16)
+        self.size_spin.setRange(8, 144)
+        self.size_spin.setValue(50)
         self.size_spin.valueChanged.connect(self.on_size_changed)
         control_layout.addWidget(self.size_spin)
+        
+        # 添加加粗选项
+        self.bold_checkbox = QCheckBox("加粗")
+        self.bold_checkbox.setChecked(True) # 默认开启
+        self.bold_checkbox.stateChanged.connect(self.on_bold_changed)
+        control_layout.addWidget(self.bold_checkbox)
         
         main_layout.addLayout(control_layout)
         
@@ -84,7 +90,8 @@ class PositionSelector(QDialog):
         # 初始化变量
         self.click_positions = []  # 存储所有点击位置
         self.preview_texts = preview_texts  # 预览文本列表
-        self.font = QFont("Arial", 16)
+        self.font = QFont("Arial", 50)
+        self.font.setBold(True)
         self.color = QColor(255, 0, 0)  # 默认红色
         self.previous_positions = previous_positions or []  # 存储之前的位置信息
         self.current_position_index = 0  # 当前正在选择的位置索引
@@ -171,7 +178,17 @@ class PositionSelector(QDialog):
         """选择字体"""
         font, ok = QFontDialog.getFont(self.font, self)
         if ok:
-            self.font = font
+            # 用户选择了新字体
+            # 保留当前字体大小和粗细设置，只改变字体家族
+            current_size = self.font.pointSize()
+            is_bold = self.bold_checkbox.isChecked()
+            
+            self.font = font # 获取选择的字体（可能包含其他样式）
+            self.font.setPointSize(current_size) # 恢复原来大小
+            self.font.setBold(is_bold) # 根据复选框设置粗细
+            
+            # 更新 SpinBox 显示当前字体大小 (如果 getFont 改变了大小)
+            self.size_spin.setValue(self.font.pointSize()) 
             self.update_preview()
     
     def select_color(self):
@@ -184,6 +201,12 @@ class PositionSelector(QDialog):
     def on_size_changed(self, size):
         """字体大小改变事件"""
         self.font.setPointSize(size)
+        self.update_preview()
+    
+    def on_bold_changed(self, state):
+        """加粗复选框状态改变事件"""
+        is_bold = bool(state == Qt.CheckState.Checked.value) # 获取布尔状态
+        self.font.setBold(is_bold)
         self.update_preview()
     
     def update_preview(self):
