@@ -198,92 +198,82 @@ class PositionSelector(QDialog):
         
         # 获取图片在标签中的实际显示区域
         label_size = self.image_label.size()
+        # 确保 pixmap 有效
+        if self.pixmap.isNull():
+            painter.end()
+            self.overlay.setPixmap(overlay_pixmap) # Show empty overlay
+            return 
         pixmap_size = self.pixmap.size()
         
-        # 计算缩放比例
-        scale_x = pixmap_size.width() / self.original_size.width()
-        scale_y = pixmap_size.height() / self.original_size.height()
+        # 计算缩放比例 (显示尺寸 / 原始尺寸)
+        # 避免除零错误
+        scale_x = pixmap_size.width() / self.original_size.width() if self.original_size.width() > 0 else 1
+        scale_y = pixmap_size.height() / self.original_size.height() if self.original_size.height() > 0 else 1
         
         # 计算图片在标签中的偏移
         offset_x = (label_size.width() - pixmap_size.width()) / 2
         offset_y = (label_size.height() - pixmap_size.height()) / 2
         
-        # 绘制之前的位置
-        for pos_info in self.previous_positions:
-            painter.setFont(pos_info['font'])
-            painter.setPen(pos_info['color'])
-            
-            # 计算文字位置（转换为显示坐标）
-            metrics = painter.fontMetrics()
-            text_width = metrics.horizontalAdvance(pos_info['text'])
-            text_height = metrics.height()
-            
-            # 转换为显示坐标
-            display_x = pos_info['position'].x() * scale_x + offset_x
-            display_y = pos_info['position'].y() * scale_y + offset_y
-            
-            # 调整位置，使文字居中
-            x = display_x - text_width / 2
-            y = display_y + text_height / 4
-            
-            # 确保使用整数坐标
-            x = int(x)
-            y = int(y)
-            
-            # 绘制文字
-            painter.drawText(x, y, pos_info['text'])
+        # --- 获取用户选择的原始字体信息 ---
+        user_font = self.font
+        user_color = self.color
+        user_point_size_f = user_font.pointSizeF() # 使用浮点数获取点数
+
+        # --- 计算用于预览的缩放后字体 ---
+        # 根据垂直缩放比例调整预览字体大小
+        preview_point_size_f = user_point_size_f * scale_y
+        # 确保预览字体大小不小于某个最小值 (e.g., 1pt) 以避免渲染问题
+        preview_point_size_f = max(1.0, preview_point_size_f)
         
-        # 绘制已选择的位置
+        preview_font = QFont(user_font) # 复制其他字体属性
+        preview_font.setPointSizeF(preview_point_size_f) # 设置缩放后的预览点数
+
+        # --- 使用缩放后的字体绘制预览 --- 
+        painter.setFont(preview_font)
+        painter.setPen(user_color)
+
+        # --- 绘制已选择的位置 ---
         for i, pos in enumerate(self.click_positions):
             if i < len(self.preview_texts):
-                painter.setFont(self.font)
-                painter.setPen(self.color)
+                text_to_draw = self.preview_texts[i]
                 
-                # 计算文字位置（转换为显示坐标）
-                metrics = painter.fontMetrics()
-                text_width = metrics.horizontalAdvance(self.preview_texts[i])
-                text_height = metrics.height()
-                
-                # 转换为显示坐标
+                # 计算文字在显示区域的中心点坐标 (display_x, display_y)
                 display_x = pos.x() * scale_x + offset_x
                 display_y = pos.y() * scale_y + offset_y
                 
-                # 调整位置，使文字居中
+                # 使用缩放后的字体计算度量
+                metrics = painter.fontMetrics()
+                text_width = metrics.horizontalAdvance(text_to_draw)
+                text_height = metrics.height()
+                # 使用基线偏移进行更精确的垂直居中
+                baseline_offset = metrics.descent()
+                
+                # 计算绘制的左上角坐标 (x, y)，使文字居中于 (display_x, display_y)
                 x = display_x - text_width / 2
-                y = display_y + text_height / 4
+                y = display_y + text_height / 2 - baseline_offset
                 
-                # 确保使用整数坐标
-                x = int(x)
-                y = int(y)
-                
-                # 绘制文字
-                painter.drawText(x, y, self.preview_texts[i])
+                painter.drawText(int(x), int(y), text_to_draw)
         
-        # 绘制当前位置（如果还有位置要选择）
+        # --- 绘制当前鼠标悬停位置的预览 (如果还在选择中) ---
         if hasattr(self, 'current_position') and self.current_position_index < len(self.preview_texts):
-            painter.setFont(self.font)
-            painter.setPen(self.color)
+            current_text = self.preview_texts[self.current_position_index]
             
-            # 计算文字位置（转换为显示坐标）
+            # 计算当前鼠标位置对应的显示中心点坐标
+            cursor_display_x = self.current_position.x() * scale_x + offset_x
+            cursor_display_y = self.current_position.y() * scale_y + offset_y
+            
+            # 使用缩放后的字体计算度量 (如果上面设置了，这里无需重复设置 font)
             metrics = painter.fontMetrics()
-            text_width = metrics.horizontalAdvance(self.preview_texts[self.current_position_index])
+            text_width = metrics.horizontalAdvance(current_text)
             text_height = metrics.height()
+            baseline_offset = metrics.descent()
             
-            # 转换为显示坐标
-            display_x = self.current_position.x() * scale_x + offset_x
-            display_y = self.current_position.y() * scale_y + offset_y
-            
-            # 调整位置，使文字居中
-            x = display_x - text_width / 2
-            y = display_y + text_height / 4
-            
-            # 确保使用整数坐标
-            x = int(x)
-            y = int(y)
-            
-            # 绘制文字
-            painter.drawText(x, y, self.preview_texts[self.current_position_index])
-        
+            # 计算绘制的左上角坐标
+            x = cursor_display_x - text_width / 2
+            y = cursor_display_y + text_height / 2 - baseline_offset
+
+            painter.drawText(int(x), int(y), current_text)
+
         painter.end()
         self.overlay.setPixmap(overlay_pixmap)
     
