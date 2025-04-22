@@ -340,8 +340,32 @@ class MainWindow(QMainWindow):
     
     def import_text_data(self):
         """导入文本数据"""
-        self.status_label.setText("正在导入数据...")
-        self.text_processor.import_text(self)
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "选择文本数据文件",
+            "",
+            "CSV 文件 (*.csv);;文本文件 (*.txt);;所有文件 (*.*)"
+        )
+        
+        if file_path:
+            self.status_label.setText("正在导入数据...")
+            try:
+                # 注意：假设 text_processor.import_text 现在只接受 file_path
+                # 如果它原本设计为也处理其他事情，需要调整 TextProcessor 类
+                self.text_processor.import_text(file_path=file_path) 
+                # 触发 on_data_loaded 可能需要 TextProcessor 发出信号
+                # 或者 import_text 直接返回数据
+                # 这里暂时假设 TextProcessor 会处理好后续流程（例如发出信号）
+                
+                # 更新拖放标签显示（可选，但保持一致性）
+                self.csv_drop_label.setText(f"已导入数据:\n{os.path.basename(file_path)}")
+                # 状态更新应该由 on_data_loaded 处理，这里先注释掉
+                # self.status_label.setText("数据已导入") 
+            except Exception as e:
+                QMessageBox.critical(self, "错误", f"导入数据失败: {str(e)}")
+                self.status_label.setText("导入数据失败")
+        else:
+            self.status_label.setText("未选择文件") # 用户取消选择
     
     def on_data_loaded(self, data):
         """数据加载完成回调"""
