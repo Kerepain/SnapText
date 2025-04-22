@@ -6,13 +6,11 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                            QToolButton, QToolTip, QDialog, QTextEdit)
 from PyQt6.QtCore import Qt, QPoint
 from PyQt6.QtGui import QIcon, QFont, QPalette, QColor, QPixmap
-from screenshot import ScreenshotWidget
 from text_processor import TextProcessor
 from image_text_processor import ImageTextProcessor
 from position_selector import PositionSelector
 from styles import Style
 from drag_drop_handler import DragDropLabel
-from screenshot_tool import take_screenshot
 
 class CardFrame(QFrame):
     def __init__(self, title="", parent=None):
@@ -93,63 +91,28 @@ class CSVFormatDialog(QDialog):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SnapText - 批量截图文字处理工具")
-        self.setGeometry(100, 100, 900, 700)
+        self.setWindowTitle("SnapText - 批量图片文字处理工具")
         
-        # 检测系统主题
-        self.isDarkMode = self.isSystemDarkMode()
+        # 创建主窗口部件和布局
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QVBoxLayout(central_widget)
+        layout.setSpacing(20)
+        layout.setContentsMargins(20, 20, 20, 20)
         
-        # 初始化模块
+        # 初始化处理器
         self.text_processor = TextProcessor()
         self.image_processor = ImageTextProcessor()
         
-        # 创建主窗口部件
-        main_widget = QWidget()
-        self.setCentralWidget(main_widget)
+        # 设置主题
+        self.isDarkMode = self.isSystemDarkMode()
         
-        # 创建主布局
-        layout = QVBoxLayout()
-        layout.setSpacing(15)
-        layout.setContentsMargins(20, 20, 20, 20)
-        main_widget.setLayout(layout)
-        
-        # 添加标题和主题切换
-        header_layout = QHBoxLayout()
-        
-        # 添加logo
-        logo_label = QLabel()
-        logo_path = self.get_resource_path("assets/logo.svg")
-        logo_pixmap = QPixmap(logo_path)
-        if not logo_pixmap.isNull():
-            logo_label.setPixmap(logo_pixmap.scaled(32, 32, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-            # 设置应用图标
-            self.setWindowIcon(QIcon(logo_path))
-        header_layout.addWidget(logo_label)
-        
-        title = QLabel("SnapText - 批量截图文字处理工具")
-        title.setObjectName("title")  # 设置对象名称以便样式表识别
-        title.setStyleSheet(Style.get_title_style(self.isDarkMode))
-        title.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        header_layout.addWidget(title)
-        
-        # 添加主题切换复选框
-        self.theme_checkbox = QCheckBox("暗色模式")
-        self.theme_checkbox.setChecked(self.isDarkMode)
-        self.theme_checkbox.stateChanged.connect(self.toggleTheme)
-        header_layout.addWidget(self.theme_checkbox, alignment=Qt.AlignmentFlag.AlignRight)
-        
-        layout.addLayout(header_layout)
-        
-        # 图片选择卡片
-        image_card = CardFrame("图片选择")
+        # 图片设置卡片
+        image_card = CardFrame("图片设置")
         screenshot_layout = QHBoxLayout()
         screenshot_layout.setSpacing(10)
         
-        self.screenshot_btn = QPushButton("选择截图区域")
-        self.screenshot_btn.setIcon(QIcon.fromTheme("camera"))
-        screenshot_layout.addWidget(self.screenshot_btn)
-        
-        self.import_image_btn = QPushButton("导入已有图片")
+        self.import_image_btn = QPushButton("导入图片")
         self.import_image_btn.setIcon(QIcon.fromTheme("folder-open"))
         screenshot_layout.addWidget(self.import_image_btn)
         
@@ -256,7 +219,6 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.status_label)
         
         # 连接信号
-        self.screenshot_btn.clicked.connect(self.select_screenshot_area)
         self.import_image_btn.clicked.connect(self.import_image)
         self.select_positions_btn.clicked.connect(self.select_all_positions)
         self.import_btn.clicked.connect(self.import_text_data)
@@ -270,7 +232,7 @@ class MainWindow(QMainWindow):
         self.image_processor.error_occurred.connect(self.show_error)
         
         # 初始化变量
-        self.screenshot_path = None
+        self.image_path = None
         self.data = None
         self.text_positions = []  # 存储所有文字位置信息
         
@@ -286,11 +248,6 @@ class MainWindow(QMainWindow):
             return result.returncode == 0
         return False
     
-    def toggleTheme(self, state):
-        """切换主题"""
-        self.isDarkMode = bool(state)
-        self.updateStyle()
-    
     def updateStyle(self):
         """更新全局样式"""
         # 设置窗口背景色
@@ -300,40 +257,18 @@ class MainWindow(QMainWindow):
         for widget in self.findChildren(CardFrame):
             widget.updateStyle()
         
-        # 更新标题样式
-        title = self.findChild(QLabel, "title")
-        if title:
-            title.setStyleSheet(Style.get_title_style(self.isDarkMode))
-        
         # 更新特殊按钮样式
-        self.screenshot_btn.setStyleSheet(Style.get_primary_button_style(self.isDarkMode))
+        self.import_image_btn.setStyleSheet(Style.get_primary_button_style(self.isDarkMode))
         self.select_positions_btn.setStyleSheet(Style.get_primary_button_style(self.isDarkMode))
         self.generate_btn.setStyleSheet(Style.get_success_button_style(self.isDarkMode))
 
-    def select_screenshot_area(self):
-        """选择截图区域"""
-        self.status_label.setText("请选择截图区域...")
-        try:
-            screenshot_path = take_screenshot()
-            if screenshot_path and os.path.exists(screenshot_path):
-                self.screenshot_path = screenshot_path
-                self.status_label.setText("截图已保存")
-                
-                # 更新拖放标签显示
-                self.image_drop_label.setText(f"已导入图片:\n{os.path.basename(screenshot_path)}")
-            else:
-                self.status_label.setText("截图已取消")
-        except Exception as e:
-            QMessageBox.critical(self, "错误", f"截图失败: {str(e)}")
-            self.status_label.setText("截图失败")
-    
     def select_all_positions(self):
         """一次性选择所有文字位置"""
-        if not self.screenshot_path:
-            QMessageBox.warning(self, "警告", "请先选择截图区域或导入图片")
+        if not self.image_path:
+            QMessageBox.warning(self, "警告", "请先选择图片或导入图片")
             return
         
-        if not os.path.exists(self.screenshot_path):
+        if not os.path.exists(self.image_path):
             QMessageBox.warning(self, "警告", "找不到图片文件，请重新截图或导入图片")
             return
         
@@ -353,7 +288,7 @@ class MainWindow(QMainWindow):
                 preview_texts.append(f"位置 {i+1}")
         
         # 创建位置选择器对话框
-        selector = PositionSelector(self.screenshot_path, preview_texts, self.text_positions)
+        selector = PositionSelector(self.image_path, preview_texts, self.text_positions)
         selector.position_selected.connect(self.on_positions_selected)
         selector.exec()
     
@@ -388,8 +323,8 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "警告", "请先导入数据")
             return
         
-        if not self.screenshot_path:
-            QMessageBox.warning(self, "警告", "请先选择截图区域")
+        if not self.image_path:
+            QMessageBox.warning(self, "警告", "请先选择图片")
             return
         
         if not self.text_positions:
@@ -402,7 +337,7 @@ class MainWindow(QMainWindow):
         
         # 生成截图
         self.image_processor.generate_screenshots(
-            self.screenshot_path,
+            self.image_path,
             self.data[:self.data_count_spin.value()],
             self.text_positions
         )
@@ -424,7 +359,7 @@ class MainWindow(QMainWindow):
         QMessageBox.critical(self, "错误", message)
 
     def import_image(self):
-        """导入已有图片"""
+        """导入图片"""
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "选择图片",
@@ -436,10 +371,10 @@ class MainWindow(QMainWindow):
             try:
                 # 复制图片到临时文件
                 import shutil
-                self.screenshot_path = os.path.abspath("temp_screenshot.png")
-                if os.path.exists(self.screenshot_path):
-                    os.remove(self.screenshot_path)
-                shutil.copy2(file_path, self.screenshot_path)
+                self.image_path = os.path.abspath("temp_image.png")
+                if os.path.exists(self.image_path):
+                    os.remove(self.image_path)
+                shutil.copy2(file_path, self.image_path)
                 self.status_label.setText("图片已导入")
                 
                 # 更新拖放标签显示
@@ -467,10 +402,10 @@ class MainWindow(QMainWindow):
         try:
             # 复制图片到临时文件
             import shutil
-            self.screenshot_path = os.path.abspath("temp_screenshot.png")
-            if os.path.exists(self.screenshot_path):
-                os.remove(self.screenshot_path)
-            shutil.copy2(file_path, self.screenshot_path)
+            self.image_path = os.path.abspath("temp_image.png")
+            if os.path.exists(self.image_path):
+                os.remove(self.image_path)
+            shutil.copy2(file_path, self.image_path)
             self.status_label.setText("图片已导入")
             
             # 更新拖放标签显示
