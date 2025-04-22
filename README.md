@@ -1,7 +1,5 @@
 # SnapText - 批量图片文字处理工具
 
-![Build Status](https://github.com/kltions/SnapText/actions/workflows/build.yml/badge.svg)
-
 一个用于在图片上批量添加文字的工具。
 
 ## 功能特点
