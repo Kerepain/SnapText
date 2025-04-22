@@ -11,6 +11,8 @@ from text_processor import TextProcessor
 from image_text_processor import ImageTextProcessor
 from position_selector import PositionSelector
 from styles import Style
+from drag_drop_handler import DragDropLabel
+from screenshot_tool import take_screenshot
 
 class CardFrame(QFrame):
     def __init__(self, title="", parent=None):
@@ -152,6 +154,11 @@ class MainWindow(QMainWindow):
         screenshot_layout.addWidget(self.import_image_btn)
         
         image_card.layout.addLayout(screenshot_layout)
+        
+        # 创建拖放区域
+        self.image_drop_label = DragDropLabel(self, is_image=True)
+        image_card.layout.addWidget(self.image_drop_label)
+        
         layout.addWidget(image_card)
         
         # 数据设置卡片
@@ -198,6 +205,10 @@ class MainWindow(QMainWindow):
         self.import_btn = QPushButton("导入文本数据")
         self.import_btn.setIcon(QIcon.fromTheme("document-open"))
         data_layout.addWidget(self.import_btn)
+        
+        # 创建拖放区域
+        self.csv_drop_label = DragDropLabel(self, is_image=False)
+        data_card.layout.addWidget(self.csv_drop_label)
         
         data_card.layout.addLayout(data_layout)
         layout.addWidget(data_card)
@@ -302,19 +313,19 @@ class MainWindow(QMainWindow):
     def select_screenshot_area(self):
         """选择截图区域"""
         self.status_label.setText("请选择截图区域...")
-        screenshot_widget = ScreenshotWidget()
-        screenshot_widget.show()
-        screenshot_widget.finished.connect(self.on_screenshot_finished)
-    
-    def on_screenshot_finished(self, screenshot):
-        """截图完成回调"""
-        if screenshot:
-            # 保存截图
-            self.screenshot_path = "temp_screenshot.png"
-            screenshot.save(self.screenshot_path)
-            self.status_label.setText("截图已保存")
-        else:
-            self.status_label.setText("截图已取消")
+        try:
+            screenshot_path = take_screenshot()
+            if screenshot_path and os.path.exists(screenshot_path):
+                self.screenshot_path = screenshot_path
+                self.status_label.setText("截图已保存")
+                
+                # 更新拖放标签显示
+                self.image_drop_label.setText(f"已导入图片:\n{os.path.basename(screenshot_path)}")
+            else:
+                self.status_label.setText("截图已取消")
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"截图失败: {str(e)}")
+            self.status_label.setText("截图失败")
     
     def select_all_positions(self):
         """一次性选择所有文字位置"""
@@ -430,6 +441,9 @@ class MainWindow(QMainWindow):
                     os.remove(self.screenshot_path)
                 shutil.copy2(file_path, self.screenshot_path)
                 self.status_label.setText("图片已导入")
+                
+                # 更新拖放标签显示
+                self.image_drop_label.setText(f"已导入图片:\n{os.path.basename(file_path)}")
             except Exception as e:
                 QMessageBox.critical(self, "错误", f"导入图片失败: {str(e)}")
 
@@ -447,6 +461,33 @@ class MainWindow(QMainWindow):
             base_path = os.path.abspath(".")
         
         return os.path.join(base_path, relative_path)
+
+    def on_image_dropped(self, file_path):
+        """处理图片拖放"""
+        try:
+            # 复制图片到临时文件
+            import shutil
+            self.screenshot_path = os.path.abspath("temp_screenshot.png")
+            if os.path.exists(self.screenshot_path):
+                os.remove(self.screenshot_path)
+            shutil.copy2(file_path, self.screenshot_path)
+            self.status_label.setText("图片已导入")
+            
+            # 更新拖放标签显示
+            self.image_drop_label.setText(f"已导入图片:\n{os.path.basename(file_path)}")
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"导入图片失败: {str(e)}")
+    
+    def on_csv_dropped(self, file_path):
+        """处理CSV拖放"""
+        try:
+            self.text_processor.import_text(self, file_path)
+            self.status_label.setText("数据已导入")
+            
+            # 更新拖放标签显示
+            self.csv_drop_label.setText(f"已导入数据:\n{os.path.basename(file_path)}")
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"导入数据失败: {str(e)}")
 
 def main():
     app = QApplication(sys.argv)
