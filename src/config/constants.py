@@ -7,7 +7,7 @@ import tempfile
 # 应用信息
 APP_NAME = "SnapText"
 APP_TITLE = "SnapText - 批量图片文字处理工具"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
 
 # 窗口设置
 WINDOW_WIDTH = 900
