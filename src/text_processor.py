@@ -11,15 +11,21 @@ class TextProcessor(QObject):
         self.data = []
         self.headers = []
     
-    def import_text(self, parent=None):
-        """导入文本数据"""
+    def import_text(self, file_path=None, parent=None):
+        """导入文本数据
+        
+        Args:
+            file_path: 文件路径，如果为None则打开文件选择对话框
+            parent: 父窗口，用于显示对话框
+        """
         try:
-            file_path, _ = QFileDialog.getOpenFileName(
-                parent,
-                "选择文本文件",
-                "",
-                "CSV文件 (*.csv);;文本文件 (*.txt);;所有文件 (*.*)"
-            )
+            if file_path is None:
+                file_path, _ = QFileDialog.getOpenFileName(
+                    parent,
+                    "选择文本文件",
+                    "",
+                    "CSV文件 (*.csv);;文本文件 (*.txt);;所有文件 (*.*)"
+                )
             
             if not file_path:
                 return

@@ -206,9 +206,9 @@ class MainWindow(QMainWindow):
         self.import_btn.setIcon(QIcon.fromTheme("document-open"))
         data_layout.addWidget(self.import_btn)
         
-        # 创建拖放区域
+        # 创建拖放区域（放在按钮下方）
         self.csv_drop_label = DragDropLabel(self, is_image=False)
-        data_card.layout.addWidget(self.csv_drop_label)
+        data_layout.addWidget(self.csv_drop_label)
         
         data_card.layout.addLayout(data_layout)
         layout.addWidget(data_card)
@@ -481,13 +481,14 @@ class MainWindow(QMainWindow):
     def on_csv_dropped(self, file_path):
         """处理CSV拖放"""
         try:
-            self.text_processor.import_text(self, file_path)
+            self.text_processor.import_text(file_path=file_path)
             self.status_label.setText("数据已导入")
             
             # 更新拖放标签显示
             self.csv_drop_label.setText(f"已导入数据:\n{os.path.basename(file_path)}")
         except Exception as e:
             QMessageBox.critical(self, "错误", f"导入数据失败: {str(e)}")
+            self.status_label.setText("导入数据失败")
 
 def main():
     app = QApplication(sys.argv)

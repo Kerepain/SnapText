@@ -90,17 +90,17 @@ class ScreenshotTool(QWidget):
                         with mss() as sct:
                             monitor = sct.monitors[1]  # 主显示器
                             screenshot = sct.grab({
-                                'left': x,
-                                'top': y,
-                                'width': width,
-                                'height': height
+                                'left': int(x),
+                                'top': int(y),
+                                'width': int(width),
+                                'height': int(height)
                             })
                             # 保存截图
                             temp_path = os.path.abspath("temp_screenshot.png")
                             sct.save(screenshot, temp_path)
                     else:
                         # 其他系统使用pyscreenshot
-                        screenshot = ImageGrab.grab(bbox=(x, y, x + width, y + height))
+                        screenshot = ImageGrab.grab(bbox=(int(x), int(y), int(x + width), int(y + height)))
                         temp_path = os.path.abspath("temp_screenshot.png")
                         screenshot.save(temp_path)
                     
