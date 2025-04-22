@@ -1,39 +1,35 @@
+"""
+文本数据处理器
+"""
 import csv
+import os
 from PyQt6.QtWidgets import QFileDialog, QMessageBox
 from PyQt6.QtCore import QObject, pyqtSignal
+from src.utils.logger import logger
 
 class TextProcessor(QObject):
-    data_loaded = pyqtSignal(list)  # 数据加载完成信号
-    error_occurred = pyqtSignal(str)  # 错误信号
+    """文本数据处理类"""
+    
+    # 定义信号
+    data_loaded = pyqtSignal(list)  # 数据加载完成信号，传递数据列表
+    error_occurred = pyqtSignal(str)  # 错误信号，传递错误信息
     
     def __init__(self):
         super().__init__()
-        self.data = []
+        self.data = []  # 存储加载的数据
         self.headers = []
     
-    def import_text(self, file_path=None, parent=None):
-        """导入文本数据
-        
-        Args:
-            file_path: 文件路径，如果为None则打开文件选择对话框
-            parent: 父窗口，用于显示对话框
-        """
+    def import_text(self, file_path=None, text_content=None):
+        """导入文本数据"""
         try:
-            if file_path is None:
-                file_path, _ = QFileDialog.getOpenFileName(
-                    parent,
-                    "选择文本文件",
-                    "",
-                    "CSV文件 (*.csv);;文本文件 (*.txt);;所有文件 (*.*)"
-                )
-            
-            if not file_path:
-                return
-            
-            if file_path.endswith('.csv'):
-                self._import_csv(file_path)
+            if file_path and os.path.exists(file_path):
+                # 从文件导入
+                self._import_from_file(file_path)
+            elif text_content:
+                # 从文本内容导入
+                self._import_from_content(text_content)
             else:
-                self._import_txt(file_path)
+                raise ValueError("必须提供文件路径或文本内容之一")
             
             # 验证数据格式
             is_valid, message = self.validate_data()
@@ -41,10 +37,42 @@ class TextProcessor(QObject):
                 self.error_occurred.emit(message)
                 return
             
+            # 发出数据加载完成信号
             self.data_loaded.emit(self.data)
-            
+            logger.info(f"成功导入 {len(self.data)} 条数据")
+            return self.data
         except Exception as e:
-            self.error_occurred.emit(f"导入失败: {str(e)}")
+            logger.error(f"导入数据失败: {str(e)}")
+            self.error_occurred.emit(f"导入数据失败: {str(e)}")
+            raise
+    
+    def _import_from_file(self, file_path):
+        """从文件导入数据"""
+        _, ext = os.path.splitext(file_path)
+        ext = ext.lower()
+        
+        if ext == '.csv':
+            self._import_csv(file_path)
+        elif ext == '.txt':
+            self._import_txt(file_path)
+        else:
+            self._import_as_csv(file_path)  # 尝试作为CSV导入
+        
+        logger.debug(f"从文件导入了 {len(self.data)} 条数据")
+    
+    def _import_from_content(self, text_content):
+        """从文本内容导入数据"""
+        # 分割文本内容为行
+        lines = text_content.strip().split('\n')
+        
+        # 尝试作为CSV处理
+        try:
+            reader = csv.reader(lines)
+            self.data = [row for row in reader]
+            logger.debug(f"从文本内容导入了 {len(self.data)} 条数据")
+        except Exception as e:
+            logger.error(f"从文本内容导入失败: {str(e)}")
+            raise ValueError(f"解析文本内容失败: {str(e)}")
     
     def _import_csv(self, file_path):
         """导入CSV文件"""
@@ -72,6 +100,14 @@ class TextProcessor(QObject):
             
             if self.data:
                 self.headers = ["姓名", "学号", "班级"]
+    
+    def _import_as_csv(self, file_path):
+        """尝试作为CSV导入文件"""
+        try:
+            self._import_csv(file_path)
+        except Exception as e:
+            logger.error(f"作为CSV导入失败: {str(e)}")
+            raise ValueError(f"无法导入文件: {str(e)}")
     
     def get_headers(self):
         """获取表头"""
@@ -106,4 +142,9 @@ class TextProcessor(QObject):
             for i, header in enumerate(self.headers):
                 processed_row[header] = row[i]
             processed_data.append(processed_row)
-        return processed_data 
+        return processed_data
+    
+    def clear_data(self):
+        """清除数据"""
+        self.data = []
+        logger.debug("数据已清除") 
