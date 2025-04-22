@@ -3,6 +3,7 @@
 """
 import os
 import webbrowser
+import tempfile
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, 
                            QPushButton, QLabel, QProgressBar, QMessageBox,
                            QHBoxLayout, QSpinBox, QFileDialog, QCheckBox)
@@ -16,7 +17,7 @@ from src.config.constants import (APP_TITLE, WINDOW_WIDTH, WINDOW_HEIGHT,
                                WINDOW_MARGIN, WINDOW_SPACING, DEFAULT_POSITION_COUNT, 
                                DEFAULT_DATA_COUNT, MAX_DATA_COUNT, 
                                SUPPORTED_IMAGE_FORMATS, SUPPORTED_DATA_FORMATS,
-                               GITHUB_REPO_URL)
+                               GITHUB_REPO_URL, APP_VERSION)
 from src.processors.text_processor import TextProcessor
 from src.processors.image_text_processor import ImageTextProcessor
 from src.processors.position_selector import PositionSelector
@@ -28,12 +29,40 @@ class MainWindow(QMainWindow):
     """主窗口类"""
     
     def __init__(self):
+        """初始化主窗口"""
         super().__init__()
+        
+        # 初始化日志记录器
+        self.logger = logger
+        self.logger.info("初始化主窗口")
+        
+        # 设置窗口标题和几何参数
         self.setWindowTitle(APP_TITLE)
         self.setGeometry(100, 100, WINDOW_WIDTH, WINDOW_HEIGHT)
         
         # 设置主题
         self.isDarkMode = is_system_dark_mode()
+        
+        # 初始化UI组件
+        self.initUI()
+        
+        # 获取临时目录路径
+        self.temp_dir = tempfile.gettempdir()
+        
+        # 初始化数据
+        self.image_path = None
+        self.data = None
+        self.text_positions = []  # 存储所有文字位置信息
+        
+        # 更新全局样式
+        self.updateStyle()
+        
+        # 显示窗口
+        self.show()
+        
+    def initUI(self):
+        """初始化UI组件"""
+        self.logger.debug("初始化UI组件")
         
         # 创建主窗口部件和布局
         central_widget = QWidget()
@@ -42,7 +71,7 @@ class MainWindow(QMainWindow):
         layout.setSpacing(WINDOW_SPACING)
         layout.setContentsMargins(WINDOW_MARGIN, WINDOW_MARGIN, WINDOW_MARGIN, WINDOW_MARGIN)
         
-        # 添加标题和主题切换
+        # 创建标题栏
         header_layout = QHBoxLayout()
         
         # 添加logo
@@ -55,17 +84,41 @@ class MainWindow(QMainWindow):
             self.setWindowIcon(QIcon(logo_path))
         header_layout.addWidget(logo_label)
         
-        title = QLabel(APP_TITLE)
-        title.setObjectName("title")  # 设置对象名称以便样式表识别
-        title.setStyleSheet(Style.get_title_style(self.isDarkMode))
-        title.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        header_layout.addWidget(title)
+        # 创建标题和版本号的垂直布局
+        title_layout = QVBoxLayout()
+        
+        # 添加标题
+        self.title_label = QLabel(APP_TITLE)
+        self.title_label.setObjectName("title")
+        self.title_label.setStyleSheet(Style.get_title_style(self.isDarkMode))
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_layout.addWidget(self.title_label)
+        
+        # 显示版本号
+        self.version_label = QLabel(f"v{APP_VERSION}")
+        self.version_label.setObjectName("version")
+        self.version_label.setStyleSheet(Style.get_version_style(self.isDarkMode))
+        self.version_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_layout.addWidget(self.version_label)
+        
+        # 将标题布局添加到主布局，并设置拉伸因子
+        header_layout.addLayout(title_layout, 1)
         
         # 添加GitHub仓库链接按钮
-        self.github_btn = QPushButton("GitHub")
+        github_icon_path = get_resource_path("assets/icons/github-light.svg" if self.isDarkMode else "assets/icons/github.svg")
+        self.github_btn = QPushButton()
         self.github_btn.setToolTip("访问项目GitHub仓库")
-        self.github_btn.setIcon(QIcon.fromTheme("web-browser"))
-        self.github_btn.setFixedWidth(100)
+        
+        # 加载GitHub图标
+        github_icon = QIcon(github_icon_path)
+        if not github_icon.isNull():
+            self.github_btn.setIcon(github_icon)
+            self.github_btn.setIconSize(QPixmap(github_icon_path).size() * 0.25)  # 设置图标大小为原始尺寸的25%
+        else:
+            self.github_btn.setText("GitHub")
+            self.logger.warning(f"无法加载GitHub图标: {github_icon_path}")
+        
+        self.github_btn.setFixedSize(32, 32)
         self.github_btn.clicked.connect(self.open_github_repo)
         header_layout.addWidget(self.github_btn)
         
@@ -82,7 +135,7 @@ class MainWindow(QMainWindow):
         self.image_processor = ImageTextProcessor()
         
         # 图片设置卡片
-        image_card = CardFrame("图片设置")
+        self.image_card = CardFrame("图片设置")
         screenshot_layout = QHBoxLayout()
         screenshot_layout.setSpacing(10)
         
@@ -90,17 +143,19 @@ class MainWindow(QMainWindow):
         self.import_image_btn.setIcon(QIcon.fromTheme("folder-open"))
         screenshot_layout.addWidget(self.import_image_btn)
         
-        image_card.layout.addLayout(screenshot_layout)
+        self.image_card.layout.addLayout(screenshot_layout)
         
         # 创建拖放区域
         self.image_drop_label = DragDropLabel(self, is_image=True)
-        image_card.layout.addWidget(self.image_drop_label)
+        self.image_drop_label.setFixedHeight(60)  # 减小高度
+        self.image_card.layout.addWidget(self.image_drop_label)
         
-        layout.addWidget(image_card)
+        layout.addWidget(self.image_card)
         
         # 数据设置卡片
-        data_card = CardFrame("数据设置")
+        self.data_card = CardFrame("数据设置")
         data_layout = QVBoxLayout()
+        data_layout.setSpacing(8)  # 减小内部组件间距
         
         # 数据组数选择
         data_count_layout = QHBoxLayout()
@@ -139,20 +194,22 @@ class MainWindow(QMainWindow):
         data_layout.addLayout(data_count_layout)
         
         # 导入数据按钮
-        self.import_btn = QPushButton("导入文本数据")
-        self.import_btn.setIcon(QIcon.fromTheme("document-open"))
-        data_layout.addWidget(self.import_btn)
+        self.import_text_btn = QPushButton("导入文本数据")
+        self.import_text_btn.setIcon(QIcon.fromTheme("document-open"))
+        data_layout.addWidget(self.import_text_btn)
         
         # 创建拖放区域（放在按钮下方）
         self.csv_drop_label = DragDropLabel(self, is_image=False)
+        self.csv_drop_label.setFixedHeight(60)  # 减小高度
         data_layout.addWidget(self.csv_drop_label)
         
-        data_card.layout.addLayout(data_layout)
-        layout.addWidget(data_card)
+        self.data_card.layout.addLayout(data_layout)
+        layout.addWidget(self.data_card)
         
         # 文字位置设置卡片
-        position_card = CardFrame("文字位置设置")
+        self.position_card = CardFrame("文字位置设置")
         position_layout = QVBoxLayout()
+        position_layout.setSpacing(8)  # 减小内部间距
         
         # 位置数量选择
         position_count_layout = QHBoxLayout()
@@ -169,23 +226,27 @@ class MainWindow(QMainWindow):
         self.select_positions_btn.setIcon(QIcon.fromTheme("edit"))
         position_layout.addWidget(self.select_positions_btn)
         
-        position_card.layout.addLayout(position_layout)
-        layout.addWidget(position_card)
+        self.position_card.layout.addLayout(position_layout)
+        layout.addWidget(self.position_card)
         
-        # 生成按钮和进度条卡片
-        generate_card = CardFrame()
+        # 创建生成按钮和进度条布局
         generate_layout = QVBoxLayout()
+        generate_layout.setSpacing(8)
         
+        # 生成按钮
         self.generate_btn = QPushButton("生成带文字截图")
         self.generate_btn.setIcon(QIcon.fromTheme("document-save"))
+        self.generate_btn.setFixedHeight(40)  # 增加按钮高度
+        self.generate_btn.setStyleSheet(Style.get_success_button_style(self.isDarkMode))
         generate_layout.addWidget(self.generate_btn)
         
+        # 进度条
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
         generate_layout.addWidget(self.progress_bar)
         
-        generate_card.layout.addLayout(generate_layout)
-        layout.addWidget(generate_card)
+        # 添加生成布局到主布局
+        layout.addLayout(generate_layout)
         
         # 添加状态标签
         self.status_label = QLabel("就绪")
@@ -195,7 +256,7 @@ class MainWindow(QMainWindow):
         # 连接信号
         self.import_image_btn.clicked.connect(self.import_image)
         self.select_positions_btn.clicked.connect(self.select_all_positions)
-        self.import_btn.clicked.connect(self.import_text)
+        self.import_text_btn.clicked.connect(self.import_text)
         self.generate_btn.clicked.connect(self.generate_screenshots)
         
         # 连接模块信号
@@ -214,31 +275,39 @@ class MainWindow(QMainWindow):
         self.updateStyle()
         
         # 记录启动日志
-        logger.info("应用程序已启动")
+        self.logger.info("应用程序已启动")
     
     def updateStyle(self):
-        """更新全局样式"""
-        # 设置窗口背景色
+        """更新应用样式"""
+        # 设置全局样式
         self.setStyleSheet(Style.get_main_style(self.isDarkMode))
         
-        # 更新所有卡片的样式
-        for widget in self.findChildren(CardFrame):
-            widget.updateStyle()
-        
         # 更新标题样式
-        title = self.findChild(QLabel, "title")
-        if title:
-            title.setStyleSheet(Style.get_title_style(self.isDarkMode))
+        self.title_label.setStyleSheet(Style.get_title_style(self.isDarkMode))
+        self.version_label.setStyleSheet(Style.get_version_style(self.isDarkMode))
         
-        # 更新特殊按钮样式
+        # 更新卡片样式
+        self.image_card.setStyleSheet(Style.get_card_style(self.isDarkMode))
+        self.data_card.setStyleSheet(Style.get_card_style(self.isDarkMode))
+        self.position_card.setStyleSheet(Style.get_card_style(self.isDarkMode))
+        
+        # 更新按钮样式
         self.import_image_btn.setStyleSheet(Style.get_primary_button_style(self.isDarkMode))
+        self.import_text_btn.setStyleSheet(Style.get_primary_button_style(self.isDarkMode))
         self.select_positions_btn.setStyleSheet(Style.get_primary_button_style(self.isDarkMode))
         self.generate_btn.setStyleSheet(Style.get_success_button_style(self.isDarkMode))
-        # GitHub按钮样式
-        self.github_btn.setStyleSheet(Style.get_github_button_style(self.isDarkMode))
+        
+        # 更新GitHub按钮图标
+        github_icon_path = get_resource_path("assets/icons/github-light.svg" if self.isDarkMode else "assets/icons/github.svg")
+        github_icon = QIcon(github_icon_path)
+        if not github_icon.isNull():
+            self.github_btn.setIcon(github_icon)
+            self.logger.debug(f"已更新GitHub图标: {github_icon_path}")
+        else:
+            self.logger.warning(f"无法加载GitHub图标: {github_icon_path}")
         
         # 记录主题切换日志
-        logger.debug(f"主题已更新为: {'暗色' if self.isDarkMode else '亮色'}")
+        self.logger.debug(f"主题已更新为: {'暗色' if self.isDarkMode else '亮色'}")
 
     def select_all_positions(self):
         """一次性选择所有文字位置"""
@@ -275,15 +344,15 @@ class MainWindow(QMainWindow):
         self.status_label.setText(f"已设置 {len(positions)} 个文字位置")
         
         # 记录位置设置日志
-        logger.info(f"已设置 {len(positions)} 个文字位置")
+        self.logger.info(f"已设置 {len(positions)} 个文字位置")
         
         # 打印调试信息
         for i, pos_info in enumerate(positions):
-            logger.debug(f"位置 {i+1} 设置:")
-            logger.debug(f"  位置: ({pos_info['position'].x()}, {pos_info['position'].y()})")
-            logger.debug(f"  文字: {pos_info['text']}")
-            logger.debug(f"  字体: {pos_info['font'].family()}, {pos_info['font'].pointSize()}pt")
-            logger.debug(f"  颜色: ({pos_info['color'].red()}, {pos_info['color'].green()}, {pos_info['color'].blue()})")
+            self.logger.debug(f"位置 {i+1} 设置:")
+            self.logger.debug(f"  位置: ({pos_info['position'].x()}, {pos_info['position'].y()})")
+            self.logger.debug(f"  文字: {pos_info['text']}")
+            self.logger.debug(f"  字体: {pos_info['font'].family()}, {pos_info['font'].pointSize()}pt")
+            self.logger.debug(f"  颜色: ({pos_info['color'].red()}, {pos_info['color'].green()}, {pos_info['color'].blue()})")
     
     def import_text(self):
         """导入文本数据"""
@@ -300,11 +369,11 @@ class MainWindow(QMainWindow):
                 # 导入数据
                 self.text_processor.import_text(file_path=file_path)
                 self.csv_drop_label.setText(f"已导入数据:\n{os.path.basename(file_path)}")
-                logger.info(f"已导入数据文件: {file_path}")
+                self.logger.info(f"已导入数据文件: {file_path}")
             except Exception as e:
                 QMessageBox.critical(self, "错误", f"导入数据失败: {str(e)}")
                 self.status_label.setText("导入数据失败")
-                logger.error(f"导入数据失败: {str(e)}")
+                self.logger.error(f"导入数据失败: {str(e)}")
         else:
             self.status_label.setText("未选择文件")
     
@@ -314,7 +383,7 @@ class MainWindow(QMainWindow):
         self.status_label.setText(f"已导入 {len(data)} 条数据")
         # 更新数据组数选择框的最大值
         self.data_count_spin.setMaximum(min(len(data), MAX_DATA_COUNT))
-        logger.info(f"数据加载完成，共 {len(data)} 条记录")
+        self.logger.info(f"数据加载完成，共 {len(data)} 条记录")
     
     def generate_screenshots(self):
         """生成带文字的截图"""
@@ -336,7 +405,7 @@ class MainWindow(QMainWindow):
         
         # 生成截图
         data_count = self.data_count_spin.value()
-        logger.info(f"开始生成截图，数据组数: {data_count}")
+        self.logger.info(f"开始生成截图，数据组数: {data_count}")
         
         self.image_processor.generate_screenshots(
             self.image_path,
@@ -353,14 +422,14 @@ class MainWindow(QMainWindow):
         self.progress_bar.setVisible(False)
         self.status_label.setText(message)
         QMessageBox.information(self, "完成", "截图生成完成！")
-        logger.info("截图生成完成")
+        self.logger.info("截图生成完成")
     
     def show_error(self, message):
         """显示错误信息"""
         self.progress_bar.setVisible(False)
         self.status_label.setText("发生错误")
         QMessageBox.critical(self, "错误", message)
-        logger.error(f"错误: {message}")
+        self.logger.error(f"错误: {message}")
 
     def import_image(self):
         """导入图片"""
@@ -376,20 +445,20 @@ class MainWindow(QMainWindow):
                 # 复制图片到临时文件
                 self.image_path = copy_to_temp(file_path, "snaptext_image.png")
                 self.status_label.setText("图片已导入")
-                logger.info(f"图片已导入: {file_path}")
+                self.logger.info(f"图片已导入: {file_path}")
                 
                 # 更新拖放标签显示
                 self.image_drop_label.setText(f"已导入图片:\n{os.path.basename(file_path)}")
             except Exception as e:
                 QMessageBox.critical(self, "错误", f"导入图片失败: {str(e)}")
-                logger.error(f"导入图片失败: {str(e)}")
+                self.logger.error(f"导入图片失败: {str(e)}")
                 self.status_label.setText("导入图片失败")
 
     def show_csv_format_help(self):
         """显示CSV格式说明对话框"""
         dialog = CSVFormatDialog(self)
         dialog.exec()
-        logger.debug("显示CSV格式说明对话框")
+        self.logger.debug("显示CSV格式说明对话框")
     
     def on_image_dropped(self, file_path):
         """处理图片拖放"""
@@ -397,13 +466,13 @@ class MainWindow(QMainWindow):
             # 复制图片到临时文件
             self.image_path = copy_to_temp(file_path, "snaptext_image.png")
             self.status_label.setText("图片已导入")
-            logger.info(f"拖放导入图片: {file_path}")
+            self.logger.info(f"拖放导入图片: {file_path}")
             
             # 更新拖放标签显示
             self.image_drop_label.setText(f"已导入图片:\n{os.path.basename(file_path)}")
         except Exception as e:
             QMessageBox.critical(self, "错误", f"导入图片失败: {str(e)}")
-            logger.error(f"拖放导入图片失败: {str(e)}")
+            self.logger.error(f"拖放导入图片失败: {str(e)}")
             self.status_label.setText("导入图片失败")
     
     def on_csv_dropped(self, file_path):
@@ -413,7 +482,7 @@ class MainWindow(QMainWindow):
             temp_file = copy_to_temp(file_path, "snaptext_data.csv")
             self.text_processor.import_text(file_path=temp_file)
             self.status_label.setText("数据已导入")
-            logger.info(f"拖放导入数据: {file_path}")
+            self.logger.info(f"拖放导入数据: {file_path}")
             
             # 更新拖放标签显示
             self.csv_drop_label.setText(f"已导入数据:\n{os.path.basename(file_path)}")
@@ -423,7 +492,7 @@ class MainWindow(QMainWindow):
                 os.remove(temp_file)
         except Exception as e:
             QMessageBox.critical(self, "错误", f"导入数据失败: {str(e)}")
-            logger.error(f"拖放导入数据失败: {str(e)}")
+            self.logger.error(f"拖放导入数据失败: {str(e)}")
             self.status_label.setText("导入数据失败")
 
     def toggleTheme(self, state):
@@ -433,10 +502,10 @@ class MainWindow(QMainWindow):
     
     def closeEvent(self, event):
         """处理窗口关闭事件"""
-        logger.info("应用程序关闭")
+        self.logger.info("应用程序关闭")
         event.accept()
 
     def open_github_repo(self):
         """打开GitHub仓库"""
         webbrowser.open(GITHUB_REPO_URL)
-        logger.info("打开GitHub仓库") 
+        self.logger.info("打开GitHub仓库") 

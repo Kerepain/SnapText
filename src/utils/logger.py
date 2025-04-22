@@ -61,9 +61,14 @@ class Logger:
         """记录警告信息"""
         self.logger.warning(message)
     
-    def error(self, message):
-        """记录错误信息"""
-        self.logger.error(message)
+    def error(self, message, exc_info=False):
+        """记录错误信息
+        
+        Args:
+            message: 错误信息
+            exc_info: 是否包含异常详情
+        """
+        self.logger.error(message, exc_info=exc_info)
     
     def critical(self, message):
         """记录严重错误信息"""
