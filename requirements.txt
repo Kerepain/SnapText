@@ -4,4 +4,5 @@ pynput==1.7.6
 pyautogui==0.9.54
 numpy>=1.21.0
 reportlab>=3.6.0
-python-docx==1.1.0 
+python-docx==1.1.0
+pyscreenshot>=3.1 
