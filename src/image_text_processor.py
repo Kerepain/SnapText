@@ -69,66 +69,38 @@ class ImageTextProcessor(QObject):
                             # 确保索引在数据范围内
                             index = min(pos_info.get('index', 0), len(row) - 1)
                             text = str(row[index])  # 确保转换为字符串
-                            
-                            # 使用相对坐标和大小来计算实际绘制位置
-                            if 'relative_x' in pos_info and 'relative_y' in pos_info:
-                                # 使用相对坐标计算实际点击位置
-                                abs_x = int(pos_info['relative_x'] * image_width)
-                                abs_y = int(pos_info['relative_y'] * image_height)
-                                
-                                # 使用相对字体大小计算实际字体大小
-                                font = QFont(pos_info['font'])
-                                if 'relative_font_size' in pos_info:
-                                    actual_font_size = int(pos_info['relative_font_size'] * image_height)
-                                    font.setPointSize(actual_font_size)
-                                
-                                # 设置字体和颜色
-                                painter.setFont(font)
-                                painter.setPen(QColor(pos_info['color']))
-                                
-                                # 计算文字尺寸
-                                metrics = painter.fontMetrics()
-                                text_width = metrics.horizontalAdvance(text)
-                                text_height = metrics.height()
-                                
-                                # 计算最终绘制位置(完全居中)
-                                baseline_offset = metrics.descent()
-                                x = abs_x - text_width / 2
-                                y = abs_y + text_height / 2 - baseline_offset
-                                
-                                # 确保为整数坐标
-                                x = int(x)
-                                y = int(y)
-                                
-                                print(f"绘制文字: '{text}'")
-                                print(f"  相对坐标: ({pos_info['relative_x']:.6f}, {pos_info['relative_y']:.6f})")
-                                print(f"  实际坐标: ({abs_x}, {abs_y})")
-                                print(f"  文字尺寸: 宽={text_width}, 高={text_height}, 基线偏移={baseline_offset}")
-                                print(f"  最终绘制坐标: ({x}, {y})")
-                                print(f"  字体大小: {font.pointSize()}pt")
-                                
-                                # 绘制文字
-                                painter.drawText(x, y, text)
-                            else:
-                                # 回退到旧方法
-                                print("警告: 未找到相对坐标,使用旧方法")
-                                font = QFont(pos_info['font'])
-                                position = pos_info['position']
-                                painter.setFont(font)
-                                painter.setPen(QColor(pos_info['color']))
-                                
-                                metrics = painter.fontMetrics()
-                                text_width = metrics.horizontalAdvance(text)
-                                text_height = metrics.height()
-                                baseline_offset = metrics.descent()
-                                
-                                x = position.x() - text_width / 2
-                                y = position.y() + text_height / 2 - baseline_offset
-                                
-                                x = int(x)
-                                y = int(y)
-                                
-                                painter.drawText(x, y, text)
+
+                            # 使用 PositionSelector 传来的原始 QFont (包含绝对点数)
+                            font = QFont(pos_info['font'])
+                            painter.setFont(font)
+                            painter.setPen(QColor(pos_info['color']))
+
+                            # 使用 PositionSelector 传来的绝对坐标
+                            position = pos_info['position']
+
+                            # 计算文字尺寸用于居中
+                            metrics = painter.fontMetrics()
+                            text_width = metrics.horizontalAdvance(text)
+                            text_height = metrics.height()
+                            baseline_offset = metrics.descent() # 用于垂直对齐的基线偏移
+
+                            # 计算绘制文字所需的左上角坐标 (x, y)，使文字块在 position 处居中
+                            x = position.x() - text_width / 2
+                            # 垂直居中: 目标中心y + 文字高度一半 - 基线偏移 (drawText从基线开始绘制)
+                            y = position.y() + text_height / 2 - baseline_offset
+
+                            # 确保为整数坐标
+                            x = int(x)
+                            y = int(y)
+
+                            # 简化调试信息
+                            print(f"绘制文字: '{text}' at ({x}, {y}) Font: {font.family()} {font.pointSize()}pt Color: {pos_info['color'].name()}")
+                            print(f"  Target Center (Absolute): ({position.x()}, {position.y()})")
+                            print(f"  Text Metrics: w={text_width}, h={text_height}, baseline={baseline_offset}")
+
+                            # 绘制文字
+                            painter.drawText(x, y, text)
+
                         except Exception as e:
                             print(f"绘制单个文字时出错: {str(e)}")
                             import traceback
