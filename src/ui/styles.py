@@ -68,9 +68,10 @@ class Style:
         return f"""
             QLabel {{
                 color: {title_color};
-                font-size: 18px;
+                font-size: 22px;
                 font-weight: bold;
-                margin-left: 5px;
+                margin-bottom: 2px;
+                padding: 5px;
             }}
         """
     
@@ -84,8 +85,8 @@ class Style:
             QFrame {{
                 background-color: {bg_color};
                 border: 1px solid {border_color};
-                border-radius: 8px;
-                padding: 15px;
+                border-radius: 6px;
+                padding: 10px;
             }}
         """
     
@@ -121,9 +122,10 @@ class Style:
                 background-color: #4caf50;
                 color: {text_color};
                 border-radius: 4px;
-                padding: 6px 12px;
-                min-height: 20px;
+                padding: 8px 15px;
+                min-height: 25px;
                 font-weight: bold;
+                font-size: 14px;
             }}
             QPushButton:hover {{
                 background-color: #3d8b40;
@@ -139,34 +141,43 @@ class Style:
         if isDark:
             return """
                 QPushButton {
-                    background-color: #2b3137;
-                    color: white;
-                    border: 1px solid #444d56;
-                    border-radius: 4px;
-                    padding: 5px 10px;
-                    font-weight: bold;
+                    background-color: transparent;
+                    border: none;
+                    border-radius: 16px;
+                    padding: 4px;
                 }
                 QPushButton:hover {
-                    background-color: #3f464e;
+                    background-color: rgba(255, 255, 255, 0.1);
                 }
                 QPushButton:pressed {
-                    background-color: #24292e;
+                    background-color: rgba(255, 255, 255, 0.2);
                 }
             """
         else:
             return """
                 QPushButton {
-                    background-color: #fafbfc;
-                    color: #24292e;
-                    border: 1px solid #e1e4e8;
-                    border-radius: 4px;
-                    padding: 5px 10px;
-                    font-weight: bold;
+                    background-color: transparent;
+                    border: none;
+                    border-radius: 16px;
+                    padding: 4px;
                 }
                 QPushButton:hover {
-                    background-color: #f3f4f6;
+                    background-color: rgba(0, 0, 0, 0.05);
                 }
                 QPushButton:pressed {
-                    background-color: #e1e4e8;
+                    background-color: rgba(0, 0, 0, 0.1);
                 }
-            """ 
+            """
+    
+    @staticmethod
+    def get_version_style(isDark=False):
+        """获取版本号样式"""
+        version_color = "#aaaaaa" if isDark else "#666666"
+        
+        return f"""
+            QLabel {{
+                color: {version_color};
+                font-size: 12px;
+                margin-top: 0px;
+            }}
+        """ 

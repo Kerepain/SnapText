@@ -12,9 +12,9 @@ GITHUB_REPO_URL = "https://github.com/Kerepain/SnapText/"
 
 # 窗口设置
 WINDOW_WIDTH = 900
-WINDOW_HEIGHT = 700
-WINDOW_MARGIN = 20
-WINDOW_SPACING = 20
+WINDOW_HEIGHT = 650
+WINDOW_MARGIN = 15
+WINDOW_SPACING = 15
 
 # 文件相关
 TEMP_DIR = tempfile.gettempdir()
