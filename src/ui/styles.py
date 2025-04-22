@@ -1,9 +1,9 @@
 """
-应用程序样式定义
+应用样式定义
 """
 
 class Style:
-    """样式定义类"""
+    """样式类，定义应用的各种样式"""
     
     @staticmethod
     def get_main_style(isDark=False):
@@ -131,4 +131,42 @@ class Style:
             QPushButton:pressed {{
                 background-color: #2d682f;
             }}
-        """ 
+        """
+    
+    @staticmethod
+    def get_github_button_style(isDark=False):
+        """获取GitHub按钮样式"""
+        if isDark:
+            return """
+                QPushButton {
+                    background-color: #2b3137;
+                    color: white;
+                    border: 1px solid #444d56;
+                    border-radius: 4px;
+                    padding: 5px 10px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: #3f464e;
+                }
+                QPushButton:pressed {
+                    background-color: #24292e;
+                }
+            """
+        else:
+            return """
+                QPushButton {
+                    background-color: #fafbfc;
+                    color: #24292e;
+                    border: 1px solid #e1e4e8;
+                    border-radius: 4px;
+                    padding: 5px 10px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: #f3f4f6;
+                }
+                QPushButton:pressed {
+                    background-color: #e1e4e8;
+                }
+            """ 

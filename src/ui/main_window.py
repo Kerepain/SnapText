@@ -2,6 +2,7 @@
 主窗口模块
 """
 import os
+import webbrowser
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, 
                            QPushButton, QLabel, QProgressBar, QMessageBox,
                            QHBoxLayout, QSpinBox, QFileDialog, QCheckBox)
@@ -14,7 +15,8 @@ from src.ui.drag_drop_label import DragDropLabel
 from src.config.constants import (APP_TITLE, WINDOW_WIDTH, WINDOW_HEIGHT, 
                                WINDOW_MARGIN, WINDOW_SPACING, DEFAULT_POSITION_COUNT, 
                                DEFAULT_DATA_COUNT, MAX_DATA_COUNT, 
-                               SUPPORTED_IMAGE_FORMATS, SUPPORTED_DATA_FORMATS)
+                               SUPPORTED_IMAGE_FORMATS, SUPPORTED_DATA_FORMATS,
+                               GITHUB_REPO_URL)
 from src.processors.text_processor import TextProcessor
 from src.processors.image_text_processor import ImageTextProcessor
 from src.processors.position_selector import PositionSelector
@@ -58,6 +60,14 @@ class MainWindow(QMainWindow):
         title.setStyleSheet(Style.get_title_style(self.isDarkMode))
         title.setAlignment(Qt.AlignmentFlag.AlignLeft)
         header_layout.addWidget(title)
+        
+        # 添加GitHub仓库链接按钮
+        self.github_btn = QPushButton("GitHub")
+        self.github_btn.setToolTip("访问项目GitHub仓库")
+        self.github_btn.setIcon(QIcon.fromTheme("web-browser"))
+        self.github_btn.setFixedWidth(100)
+        self.github_btn.clicked.connect(self.open_github_repo)
+        header_layout.addWidget(self.github_btn)
         
         # 添加主题切换复选框
         self.theme_checkbox = QCheckBox("暗色模式")
@@ -224,6 +234,8 @@ class MainWindow(QMainWindow):
         self.import_image_btn.setStyleSheet(Style.get_primary_button_style(self.isDarkMode))
         self.select_positions_btn.setStyleSheet(Style.get_primary_button_style(self.isDarkMode))
         self.generate_btn.setStyleSheet(Style.get_success_button_style(self.isDarkMode))
+        # GitHub按钮样式
+        self.github_btn.setStyleSheet(Style.get_github_button_style(self.isDarkMode))
         
         # 记录主题切换日志
         logger.debug(f"主题已更新为: {'暗色' if self.isDarkMode else '亮色'}")
@@ -422,4 +434,9 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         """处理窗口关闭事件"""
         logger.info("应用程序关闭")
-        event.accept() 
+        event.accept()
+
+    def open_github_repo(self):
+        """打开GitHub仓库"""
+        webbrowser.open(GITHUB_REPO_URL)
+        logger.info("打开GitHub仓库") 
