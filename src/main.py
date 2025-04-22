@@ -116,9 +116,12 @@ class MainWindow(QMainWindow):
         
         # 添加logo
         logo_label = QLabel()
-        logo_pixmap = QPixmap("assets/logo.svg")
+        logo_path = self.get_resource_path("assets/logo.svg")
+        logo_pixmap = QPixmap(logo_path)
         if not logo_pixmap.isNull():
             logo_label.setPixmap(logo_pixmap.scaled(32, 32, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            # 设置应用图标
+            self.setWindowIcon(QIcon(logo_path))
         header_layout.addWidget(logo_label)
         
         title = QLabel("SnapText - 批量截图文字处理工具")
@@ -434,6 +437,16 @@ class MainWindow(QMainWindow):
         """显示CSV格式说明对话框"""
         dialog = CSVFormatDialog(self)
         dialog.exec()
+
+    def get_resource_path(self, relative_path):
+        """获取资源文件的绝对路径"""
+        try:
+            # PyInstaller创建临时文件夹,将路径存储在_MEIPASS中
+            base_path = sys._MEIPASS
+        except Exception:
+            base_path = os.path.abspath(".")
+        
+        return os.path.join(base_path, relative_path)
 
 def main():
     app = QApplication(sys.argv)

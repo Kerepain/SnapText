@@ -26,9 +26,20 @@ class ImageTextProcessor(QObject):
         """设置图片输出目录"""
         self.output_dir = output_dir
     
-    def generate_screenshots(self, image_path, data, positions, output_dir="output"):
+    def generate_screenshots(self, image_path, data, positions, output_dir=None):
         """在图片上添加文字并生成新的图片"""
         try:
+            # 如果没有指定输出目录，弹出选择对话框
+            if not output_dir:
+                output_dir = QFileDialog.getExistingDirectory(
+                    None,
+                    "选择保存位置",
+                    os.path.expanduser("~")
+                )
+                if not output_dir:  # 用户取消选择
+                    self.error_occurred.emit("已取消生成")
+                    return
+
             # 创建输出目录
             os.makedirs(output_dir, exist_ok=True)
             
@@ -81,13 +92,8 @@ class ImageTextProcessor(QObject):
                                 text_height = metrics.height()
                                 
                                 # 计算最终绘制位置(完全居中)
-                                # 水平居中: 将坐标点减去文字宽度的一半
-                                # 垂直居中: 将坐标点加上文字高度的一半减去基线偏移
-                                # 基线偏移约为文字高度的1/3到1/4
-                                baseline_offset = metrics.descent()  # 获取基线偏移
-                                
+                                baseline_offset = metrics.descent()
                                 x = abs_x - text_width / 2
-                                # 使文字垂直居中
                                 y = abs_y + text_height / 2 - baseline_offset
                                 
                                 # 确保为整数坐标
@@ -111,21 +117,17 @@ class ImageTextProcessor(QObject):
                                 painter.setFont(font)
                                 painter.setPen(QColor(pos_info['color']))
                                 
-                                # 使用绝对坐标计算
                                 metrics = painter.fontMetrics()
                                 text_width = metrics.horizontalAdvance(text)
                                 text_height = metrics.height()
-                                baseline_offset = metrics.descent()  # 获取基线偏移
+                                baseline_offset = metrics.descent()
                                 
-                                # 计算最终绘制位置(完全居中)
                                 x = position.x() - text_width / 2
                                 y = position.y() + text_height / 2 - baseline_offset
                                 
-                                # 确保为整数坐标
                                 x = int(x)
                                 y = int(y)
                                 
-                                # 绘制文字
                                 painter.drawText(x, y, text)
                         except Exception as e:
                             print(f"绘制单个文字时出错: {str(e)}")

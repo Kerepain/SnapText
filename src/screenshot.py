@@ -2,6 +2,7 @@ import pyautogui
 from PyQt6.QtWidgets import QWidget, QApplication, QLabel
 from PyQt6.QtCore import Qt, QRect, pyqtSignal, QPoint
 from PyQt6.QtGui import QPainter, QColor, QPen, QPixmap
+import sys
 
 class ScreenshotWidget(QWidget):
     finished = pyqtSignal(object)  # 截图完成信号
@@ -12,9 +13,24 @@ class ScreenshotWidget(QWidget):
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         
-        # 获取屏幕尺寸
-        screen = QApplication.primaryScreen().geometry()
-        self.setGeometry(screen)
+        # 获取主屏幕
+        screen = QApplication.primaryScreen()
+        if screen:
+            # 获取屏幕几何信息
+            geometry = screen.geometry()
+            # 获取屏幕缩放因子
+            scale_factor = screen.devicePixelRatio()
+            
+            # 设置窗口大小为屏幕大小
+            self.setGeometry(geometry)
+            
+            # 保存屏幕信息
+            self.screen = screen
+            self.scale_factor = scale_factor
+        else:
+            print("错误：无法获取主屏幕信息")
+            self.close()
+            return
         
         self.start_pos = None
         self.end_pos = None
@@ -56,15 +72,23 @@ class ScreenshotWidget(QWidget):
     
     def mouseReleaseEvent(self, event):
         if self.mode == "screenshot" and self.selection_rect:
-            # 获取截图
-            screenshot = pyautogui.screenshot(region=(
-                self.selection_rect.x(),
-                self.selection_rect.y(),
-                self.selection_rect.width(),
-                self.selection_rect.height()
-            ))
-            self.close()
-            self.finished.emit(screenshot)
+            try:
+                # 获取选区的实际坐标（考虑缩放因子）
+                x = int(self.selection_rect.x() * self.scale_factor)
+                y = int(self.selection_rect.y() * self.scale_factor)
+                width = int(self.selection_rect.width() * self.scale_factor)
+                height = int(self.selection_rect.height() * self.scale_factor)
+                
+                # 使用pyautogui截取屏幕
+                screenshot = pyautogui.screenshot(region=(x, y, width, height))
+                
+                self.close()
+                self.finished.emit(screenshot)
+            except Exception as e:
+                print(f"截图错误: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                self.close()
         return None
 
 class PositionSelector(QWidget):
