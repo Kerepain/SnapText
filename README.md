@@ -32,7 +32,7 @@ pip install -r requirements.txt
 4. 运行程序：
 
 ```
-python src/app.py
+python -m src.app
 ```
 
 #### 使用可执行文件
@@ -72,11 +72,48 @@ SnapText/
 │   │   ├── file_utils.py  # 文件工具
 │   │   ├── logger.py      # 日志工具
 │   │   └── theme_utils.py # 主题工具
-│   └── app.py         # 程序入口
+│   ├── __init__.py    # 包初始化文件
+│   ├── __main__.py    # 主入口点
+│   ├── app.py         # 应用入口
+│   └── main.py        # 兼容旧入口
 ├── output/            # 输出目录
 ├── requirements.txt   # 依赖项
 └── README.md          # 说明文档
 ```
+
+### 发布版本
+
+你可以在[发布页面](https://github.com/yourusername/SnapText/releases)下载最新版本的 SnapText。
+
+#### 发布流程
+
+如需创建新的发布版本，请按照以下步骤操作：
+
+1. 更新版本号：修改 `src/config/constants.py` 中的 `APP_VERSION`
+2. 构建应用程序：
+   - Windows: `pyinstaller main.spec`
+   - macOS: `pyinstaller SnapText.spec`
+3. 测试生成的可执行文件
+4. 创建标签和发布：
+   ```
+   git tag -a v1.x.x -m "SnapText v1.x.x"
+   git push origin v1.x.x
+   ```
+5. 在GitHub发布页面上传生成的可执行文件
+
+### 更新日志
+
+#### v1.1.0 (2025-04-22)
+- 重构项目结构为模块化设计
+- 优化日志记录系统，使用单例模式
+- 改进文件管理，所有临时文件统一保存到系统临时目录
+- 改进位置选择器：默认使用红色加粗字体，扩大字体大小范围
+- 优化异常处理和错误提示
+
+#### v1.0.0 (2025-03-15)
+- 首次发布
+- 基本功能：图片导入、数据导入、文字位置选择、批量生成图片
+- 支持亮色/暗色主题切换
 
 ### 许可证
 
